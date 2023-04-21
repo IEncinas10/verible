@@ -71,11 +71,13 @@ static constexpr absl::string_view kInverseEscape("\033[7m");
 static constexpr absl::string_view kNormalEscape("\033[0m");
 
 // clang-format off
+// Reference: https://en.wikipedia.org/wiki/ANSI_escape_code#3-bit_and_4-bit
 static constexpr absl::string_view kColorsStart[static_cast<uint32_t>(Color::kNumColors)] = {
-    "\033[1;32m", // GREEN
-    "\033[1;36m", // CYAN
-    "\033[1;31m", // RED
-    "",           // NONE
+    "\033[1;32m", // Green
+    "\033[1;36m", // Cyan
+    "\033[1;31m", // Red
+    "\033[1;45m", // Background Magenta
+    "",           // None
 };
 // clang-format on
 
