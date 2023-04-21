@@ -118,7 +118,9 @@ void ViolationFixer::HandleViolation(
   std::stringstream violation_message;
   formatter.FormatViolation(&violation_message, violation, base, path, url,
                             rule_name);
-  (*message_stream_) << violation_message.str() << std::endl;
+  term::Colored(*message_stream_, violation_message.str(),
+                term::Color::kBgMagenta)
+      << std::endl;
 
   if (violation.autofixes.empty()) {
     return;

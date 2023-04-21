@@ -53,8 +53,10 @@ cc_library(
     deps = [
         ":position",
         ":split",
+        ":patch",
         "//common/util:iterator_range",
         "//external_libs:editscript",
+        "//common/util:user_interaction",
         "@com_google_absl//absl/strings",
     ],
 )

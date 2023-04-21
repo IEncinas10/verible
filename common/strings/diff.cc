@@ -18,8 +18,10 @@
 #include <vector>
 
 #include "absl/strings/str_split.h"
+#include "common/strings/patch.h"
 #include "common/strings/split.h"
 #include "common/util/iterator_range.h"
+#include "common/util/user_interaction.h"
 #include "external_libs/editscript.h"
 
 namespace verible {
@@ -28,16 +30,16 @@ using diff::Edit;
 using diff::Edits;
 using diff::Operation;
 
-static char EditOperationToLineMarker(Operation op) {
+static const char* EditOperationToLineMarker(Operation op) {
   switch (op) {
     case Operation::DELETE:
-      return '-';
+      return "-";
     case Operation::EQUALS:
-      return ' ';
+      return " ";
     case Operation::INSERT:
-      return '+';
+      return "+";
     default:
-      return '?';
+      return "?";
   }
 }
 
@@ -50,27 +52,28 @@ LineDiffs::LineDiffs(absl::string_view before, absl::string_view after)
                                 after_lines.begin(), after_lines.end())) {}
 
 template <typename Iter>
-static std::ostream& PrintLineRange(std::ostream& stream, char op, Iter start,
-                                    Iter end) {
+static std::ostream& PrintLineRange(std::ostream& stream, const char* op,
+                                    Iter start, Iter end) {
   for (const auto& line : make_range(start, end)) {
-    stream << op << line;
+    // TODO: Is this ok or ugly? Implies including patch.h
+    internal::MarkedLine m(StrCat(op, line));
+    stream << m;
   }
   return stream;
 }
 
 std::ostream& LineDiffs::PrintEdit(std::ostream& stream,
                                    const Edit& edit) const {
-  const char op = EditOperationToLineMarker(edit.operation);
-  if (edit.operation == Operation::INSERT) {
-    PrintLineRange(stream, op, after_lines.begin() + edit.start,
-                   after_lines.begin() + edit.end);
-    if (after_lines[edit.end - 1].back() != '\n') stream << "\n";
-  } else {
-    PrintLineRange(stream, op, before_lines.begin() + edit.start,
-                   before_lines.begin() + edit.end);
-    if (before_lines[edit.end - 1].back() != '\n') stream << "\n";
-  }
-  stream << std::flush;
+  const std::vector<absl::string_view>& lines =
+      edit.operation == Operation::INSERT ? after_lines : before_lines;
+
+  const char* op = EditOperationToLineMarker(edit.operation);
+  PrintLineRange(stream, op, lines.begin() + edit.start,
+                 lines.begin() + edit.end);
+  if (lines[edit.end - 1].back() != '\n') stream << "\n";
+
+  // TODO: Why do we need this flush?
+  // stream << std::flush;
   return stream;
 }
 
@@ -164,13 +167,15 @@ void LineDiffsToUnifiedDiff(std::ostream& stream, const LineDiffs& linediffs,
   if (chunks.empty()) return;
 
   if (!file_a.empty()) {
-    if (file_b.empty()) {
-      stream << "--- a/" << file_a << std::endl;
-      stream << "+++ b/" << file_a << std::endl;
-    } else {
-      stream << "--- " << file_a << std::endl;
-      stream << "+++ " << file_b << std::endl;
-    }
+    const bool b_empty = file_b.empty();
+    absl::string_view old_header = b_empty ? "--- a/" : "--- ";
+    absl::string_view new_header = b_empty ? "+++ b/" : "+++ ";
+    if (b_empty) file_b = file_a;
+
+    term::Colored(stream, absl::StrCat(old_header, file_a, "\n"),
+                  term::Color::kRed);
+    term::Colored(stream, absl::StrCat(new_header, file_b, "\n"),
+                  term::Color::kCyan);
   }
 
   int added_lines_count = 0;
@@ -192,11 +197,18 @@ void LineDiffsToUnifiedDiff(std::ostream& stream, const LineDiffs& linediffs,
         chunk_before_lines_count + chunk_added_lines_count;
 
     // Chunk header
-    stream << "@@ -" << (chunk.front().start + 1);
-    if (chunk_before_lines_count > 1) stream << "," << chunk_before_lines_count;
-    stream << " +" << (chunk.front().start + added_lines_count + 1);
-    if (chunk_after_lines_count > 1) stream << "," << chunk_after_lines_count;
-    stream << " @@" << std::endl;
+    // TODO: add HunkIndices and HunkHeader constructors
+    std::string chunk_header = absl::StrCat("@@ -", chunk.front().start + 1);
+    if (chunk_before_lines_count > 1) {
+      absl::StrAppend(&chunk_header, ",", chunk_before_lines_count);
+    }
+    absl::StrAppend(&chunk_header, " +",
+                    chunk.front().start + added_lines_count + 1);
+    if (chunk_after_lines_count > 1) {
+      absl::StrAppend(&chunk_header, ",", chunk_after_lines_count);
+    }
+    absl::StrAppend(&chunk_header, " @@\n");
+    term::Colored(stream, chunk_header, term::Color::kGreen);
 
     added_lines_count += chunk_added_lines_count;
 

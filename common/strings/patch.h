@@ -111,6 +111,8 @@ struct MarkedLine {
     CHECK(Valid()) << "Unexpected marker '" << Marker() << "'.";
   }
 
+  explicit MarkedLine(std::string&& text) : line(text){};
+
   bool Valid() const {
     const char m = Marker();
     return m == ' ' || m == '-' || m == '+';
