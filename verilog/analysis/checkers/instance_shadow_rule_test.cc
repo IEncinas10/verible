@@ -76,6 +76,14 @@ TEST(InstanceShadowingTest, FunctionPass) {
           "int a;\n",
           "endmodule:foo;\n",
       },
+      {
+          "interface foo;\n",
+          "logic a;\n",
+          "modport bar (\n",
+          "input a\n",
+          ");\n",
+          "endinterface\n",
+      },
   };
   RunLintTestCases<VerilogAnalyzer, InstanceShadowRule>(
       kInstanceShadowingTestCases);

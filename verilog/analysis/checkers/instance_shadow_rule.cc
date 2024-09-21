@@ -81,7 +81,11 @@ void InstanceShadowRule::HandleSymbol(const verible::Symbol &symbol,
   const auto labels = FindAllSymbolIdentifierLeafs(symbol);
   if (labels.empty()) return;
   // if the considered symbol name is not a declaration
-  if (context.IsInside(NodeEnum::kReference)) return;
+  // ignore declarations inside modports for interfaces
+  if (context.IsInside(NodeEnum::kReference) ||
+      context.IsInside(NodeEnum::kModportDeclaration)) {
+    return;
+  }
 
   // TODO: don't latch on to K&R-Style form in which the same symbol shows
   // up twice.
