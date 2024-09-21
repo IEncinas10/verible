@@ -156,7 +156,7 @@ TEST(InstanceShadowingTest, CorrectLocationTest) {
     CHECK(config_status.ok()) << config_status.message();
     return instance;
   };
-  for (const auto& test : kInstanceShadowingTestCases) {
+  for (const auto &test : kInstanceShadowingTestCases) {
     VerilogAnalyzer analyzer(test.code, "<<inline-test>>");
     absl::Status unused_parser_status = analyzer.Analyze();
     verible::SyntaxTreeLinter linter_;
